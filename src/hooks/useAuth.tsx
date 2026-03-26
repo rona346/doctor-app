@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signInWithRedirect, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase';
 import { User, UserRole } from '../types';
@@ -24,10 +24,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           const isAdminEmail = firebaseUser.email === 'guptaronak810@gmail.com';
-          
+
           if (userDoc.exists()) {
             const userData = userDoc.data() as User;
-            // Force admin role if email matches, even if it's different in Firestore
+
             if (isAdminEmail && userData.role !== 'admin') {
               const updatedUser = { ...userData, role: 'admin' as UserRole };
               await setDoc(doc(db, 'users', firebaseUser.uid), updatedUser, { merge: true });
@@ -36,7 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(userData);
             }
           } else {
-            // New user
             const newUser: User = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
@@ -45,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               role: isAdminEmail ? 'admin' : 'patient',
               createdAt: new Date().toISOString(),
             };
+
             await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
             setUser(newUser);
           }
@@ -60,14 +60,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  // ✅ FIXED LOGIN (Redirect-based)
   const login = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (error) {
       console.error('Login error:', error);
     }
   };
 
+  // ✅ LOGOUT
   const logout = async () => {
     try {
       await signOut(auth);
