@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "doctor", "patient"] },
+        "specialization": { "type": "string", "description": "For doctors only" },
+        "experience": { "type": "number", "description": "Years of experience" },
+        "availability": { "type": "object", "description": "Weekly schedule" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Stores appointment details between patients and doctors.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "timeSlot": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"] },
+        "symptoms": { "type": "string" },
+        "reportUrls": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientId", "doctorId", "date", "timeSlot", "status"]
+    },
+    "Diagnosis": {
+      "title": "Diagnosis",
+      "description": "Stores medical diagnosis for a patient.",
+      "type": "object",
+      "properties": {
+        "appointmentId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "symptoms": { "type": "string" },
+        "aiSuggestions": { "type": "string" },
+        "finalDiagnosis": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["appointmentId", "patientId", "doctorId", "finalDiagnosis"]
+    },
+    "Prescription": {
+      "title": "Prescription",
+      "description": "Stores prescription details.",
+      "type": "object",
+      "properties": {
+        "diagnosisId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "medicines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "dosage": { "type": "string" },
+              "duration": { "type": "string" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["diagnosisId", "patientId", "doctorId", "medicines"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Stores chat messages.",
+      "type": "object",
+      "properties": {
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["chatId", "senderId", "text", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Stores user notifications.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["appointment", "message", "prescription", "system"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Appointment records"
+    },
+    "/diagnoses/{diagnosisId}": {
+      "schema": "Diagnosis",
+      "description": "Medical diagnoses"
+    },
+    "/prescriptions/{prescriptionId}": {
+      "schema": "Prescription",
+      "description": "Patient prescriptions"
+    },
+    "/chats/{chatId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Chat messages between doctor and patient"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    }
+  }
+}
