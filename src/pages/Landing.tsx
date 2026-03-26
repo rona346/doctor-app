@@ -5,7 +5,7 @@ import { Stethoscope, ShieldCheck, BrainCircuit, Users, ArrowRight } from 'lucid
 import { cn } from '../lib/utils';
 
 export default function Landing() {
-  const { user, login } = useAuth();
+  const { user, login, isLoggingIn } = useAuth();
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
@@ -47,9 +47,10 @@ export default function Landing() {
             </p>
             <button
               onClick={handleGetStarted}
-              className="px-12 py-4 bg-stone-900 text-white rounded-full hover:bg-stone-800 transition-colors flex items-center gap-2 mx-auto font-sans"
+              disabled={isLoggingIn}
+              className="px-12 py-4 bg-stone-900 text-white rounded-full hover:bg-stone-800 transition-colors flex items-center gap-2 mx-auto font-sans disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {user ? 'Go to Dashboard' : 'Consult Now'}
+              {isLoggingIn ? 'Connecting...' : (user ? 'Go to Dashboard' : 'Consult Now')}
               <ArrowRight className="w-4 h-4" />
             </button>
           </motion.div>

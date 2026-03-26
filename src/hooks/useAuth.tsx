@@ -8,6 +8,7 @@ import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isLoggingIn: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -72,6 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('Login popup request was cancelled due to a newer request.');
       } else if (error.code === 'auth/popup-closed-by-user') {
         console.log('User closed the login popup.');
+      } else if (error.code === 'auth/missing-or-invalid-nonce') {
+        console.error('Login error: Duplicate credential / invalid nonce. This often happens if the login button is clicked multiple times or if the browser session state is lost. Please refresh the page and try again.');
+        alert('Authentication error: Duplicate session detected. Please refresh the page and try again.');
       } else {
         console.error('Login error:', error);
       }
@@ -89,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isLoggingIn, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
