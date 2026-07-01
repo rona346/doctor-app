@@ -74,11 +74,19 @@ export default function Sidebar() {
 
       <div className="space-y-2">
         <Link
-          to="/settings"
-          className="flex items-center gap-3 px-4 py-3 text-stone-500 hover:bg-stone-50 hover:text-stone-900 rounded-xl transition-all"
+          to={`/${user.role}/profile`}
+          className={cn(
+            "flex items-center gap-3 px-4 py-3 rounded-xl transition-all group",
+            location.pathname.startsWith(`/${user.role}/profile`)
+              ? "bg-stone-900 text-white shadow-lg shadow-stone-200"
+              : "text-stone-500 hover:bg-stone-50 hover:text-stone-900"
+          )}
         >
-          <Settings className="w-5 h-5" />
-          <span className="text-sm font-medium">Settings</span>
+          <Settings className={cn(
+            "w-5 h-5",
+            location.pathname.startsWith(`/${user.role}/profile`) ? "text-white" : "text-stone-400 group-hover:text-stone-900"
+          )} />
+          <span className="text-sm font-medium">Profile Settings</span>
         </Link>
       </div>
     </aside>

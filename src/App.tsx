@@ -15,6 +15,7 @@ import PatientPrescriptions from './pages/PatientPrescriptions';
 import AppointmentBooking from './pages/AppointmentBooking';
 import DiagnosisSystem from './pages/DiagnosisSystem';
 import Chat from './pages/Chat';
+import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import FirestoreTest from './components/FirestoreTest';
@@ -50,6 +51,7 @@ function AppContent() {
             <Route path="/admin/patients" element={<ProtectedRoute role="admin"><AdminPatients /></ProtectedRoute>} />
             <Route path="/admin/appointments" element={<ProtectedRoute role="admin"><AdminAppointments /></ProtectedRoute>} />
             <Route path="/admin/analytics" element={<ProtectedRoute role="admin"><AdminAnalytics /></ProtectedRoute>} />
+            <Route path="/admin/profile" element={<ProtectedRoute role="admin"><Profile /></ProtectedRoute>} />
             
             {/* Doctor Routes */}
             <Route path="/doctor/dashboard" element={<ProtectedRoute role="doctor"><DoctorDashboard /></ProtectedRoute>} />
@@ -57,6 +59,7 @@ function AppContent() {
             <Route path="/doctor/patients" element={<ProtectedRoute role="doctor"><DoctorPatients /></ProtectedRoute>} />
             <Route path="/doctor/diagnoses" element={<ProtectedRoute role="doctor"><DiagnosisSystem /></ProtectedRoute>} />
             <Route path="/doctor/messages" element={<ProtectedRoute role="doctor"><Chat /></ProtectedRoute>} />
+            <Route path="/doctor/profile" element={<ProtectedRoute role="doctor"><Profile /></ProtectedRoute>} />
             
             {/* Patient Routes */}
             <Route path="/patient/dashboard" element={<ProtectedRoute role="patient"><PatientDashboard /></ProtectedRoute>} />
@@ -65,6 +68,7 @@ function AppContent() {
             <Route path="/patient/diagnoses" element={<ProtectedRoute role="patient"><DiagnosisSystem /></ProtectedRoute>} />
             <Route path="/patient/prescriptions" element={<ProtectedRoute role="patient"><PatientPrescriptions /></ProtectedRoute>} />
             <Route path="/patient/chat" element={<ProtectedRoute role="patient"><Chat /></ProtectedRoute>} />
+            <Route path="/patient/profile" element={<ProtectedRoute role="patient"><Profile /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" />} />

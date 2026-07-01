@@ -76,6 +76,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (error.code === 'auth/missing-or-invalid-nonce') {
         console.error('Login error: Duplicate credential / invalid nonce. This often happens if the login button is clicked multiple times or if the browser session state is lost. Please refresh the page and try again.');
         alert('Authentication error: Duplicate session detected. Please refresh the page and try again.');
+      } else if (error.code === 'auth/unauthorized-domain') {
+        console.error('Login error: Unauthorized Domain. Please add this domain to your Firebase Console > Authentication > Settings > Authorized Domains.');
+        alert('Configuration Error: This domain is not authorized for Firebase Authentication. Please check the console for instructions.');
       } else {
         console.error('Login error:', error);
       }

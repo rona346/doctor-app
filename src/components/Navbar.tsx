@@ -24,16 +24,21 @@ export default function Navbar() {
           <>
             <Notifications />
             <div className="flex items-center gap-4 pl-8 border-l border-stone-100">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-medium text-stone-900">{user.displayName}</p>
-                <p className="text-[10px] uppercase tracking-widest text-stone-400">{user.role}</p>
-              </div>
-              <img
-                src={user.photoURL}
-                alt={user.displayName}
-                className="w-10 h-10 rounded-full border border-stone-100"
-                referrerPolicy="no-referrer"
-              />
+              <Link
+                to={user.role === 'admin' ? '/admin/profile' : user.role === 'doctor' ? '/doctor/profile' : '/patient/profile'}
+                className="flex items-center gap-4 hover:opacity-80 transition-all duration-300 cursor-pointer group"
+              >
+                <div className="text-right hidden md:block">
+                  <p className="text-sm font-medium text-stone-900 group-hover:text-stone-700 transition-colors">{user.displayName}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-stone-400">{user.role}</p>
+                </div>
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName}
+                  className="w-10 h-10 rounded-full border border-stone-100 group-hover:border-stone-200 transition-colors"
+                  referrerPolicy="no-referrer"
+                />
+              </Link>
               <button
                 onClick={() => {
                   logout();
