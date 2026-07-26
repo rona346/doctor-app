@@ -38,6 +38,7 @@ export default function Profile() {
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const data = userSnap.data();
+        console.log('[TRACE] [Profile.tsx:fetchUserProfile] Fetched profile from Firestore. uid:', user.uid, 'displayName:', data.displayName, 'role:', data.role, 'raw experience:', data.experience);
         setDisplayName(data.displayName || '');
         setPhone(data.phone || '');
         setGender(data.gender || '');
@@ -75,8 +76,10 @@ export default function Profile() {
         updates.allergies = allergies;
         updates.chronicConditions = chronicConditions;
       } else if (user.role === 'doctor') {
+        const expVal = Number(experience) || 0;
+        console.log('[TRACE] [Profile.tsx:handleSave] Updating experience to Firestore. uid:', user.uid, 'input experience string:', experience, 'converted number:', expVal);
         updates.specialization = specialization;
-        updates.experience = Number(experience) || 0;
+        updates.experience = expVal;
       }
 
       await updateDoc(userRef, updates);

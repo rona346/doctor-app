@@ -26,9 +26,10 @@ export default function DoctorAppointments() {
       const snapshot = await getDocs(q);
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setAppointments(docs);
-      setLoading(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'appointments');
+    } finally {
+      setLoading(false);
     }
   };
 

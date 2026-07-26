@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase';
@@ -19,6 +19,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Keep refs of current isLoggingIn and user states to avoid stale closure issues in the window focus listener
+  const isLoggingInRef = useRef(isLoggingIn);
+  const userRef = useRef(user);
+
+  useEffect(() => {
+    isLoggingInRef.current = isLoggingIn;
+  }, [isLoggingIn]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    let focusTimeoutId: NodeJS.Timeout | null = null;
+
+    const handleWindowFocus = () => {
+      console.log('[DEBUG AUTH] Window focus event detected. isLoggingIn:', isLoggingInRef.current);
+      if (!isLoggingInRef.current) return;
+
+      console.log('[DEBUG AUTH] Focus regained while isLoggingIn is true. Setting 1.5s verification timer...');
+      
+      if (focusTimeoutId) clearTimeout(focusTimeoutId);
+
+      focusTimeoutId = setTimeout(() => {
+        const currentUser = auth.currentUser;
+        const resolvedUser = userRef.current;
+        console.log('[DEBUG AUTH] Focus timer fired. Current Firebase auth user:', currentUser ? currentUser.uid : 'null', 'Resolved local user state:', resolvedUser ? resolvedUser.uid : 'null');
+
+        // Only reset isLoggingIn if the user is still completely unauthenticated after regaining focus
+        if (!currentUser && !resolvedUser) {
+          console.log('[DEBUG AUTH] User remains unauthenticated after focus delay. Safely resetting isLoggingIn state.');
+          setIsLoggingIn(false);
+        } else {
+          console.log('[DEBUG AUTH] User is authenticated or authentication is in progress. Keeping isLoggingIn active for smooth transition.');
+        }
+      }, 1500);
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      if (focusTimeoutId) clearTimeout(focusTimeoutId);
+    };
+  }, []);
 
   useEffect(() => {
     console.log('[DEBUG AUTH] useEffect running. Setting up onAuthStateChanged listener...');
@@ -133,24 +178,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[DEBUG AUTH] Setting isLoggingIn to true');
     setIsLoggingIn(true);
 
-    console.log('[DEBUG AUTH] Setting 45-second watchdog timer...');
-    const timeoutId = setTimeout(() => {
-      console.log('[DEBUG AUTH] Watchdog timer fired. Forcing isLoggingIn to false...');
-      setIsLoggingIn(false);
-    }, 45000);
-
     try {
       console.log('[DEBUG AUTH] Launching signInWithPopup(auth, googleProvider)...');
       const result = await signInWithPopup(auth, googleProvider);
       console.log('[DEBUG AUTH] signInWithPopup promise resolved successfully! User UID:', result?.user?.uid);
-      console.log('[DEBUG AUTH] Clearing watchdog timer.');
-      clearTimeout(timeoutId);
     } catch (error: any) {
       console.log('[DEBUG AUTH] signInWithPopup promise REJECTED! Error object:', error);
       console.log('[DEBUG AUTH] Error code:', error?.code);
       console.log('[DEBUG AUTH] Error message:', error?.message);
-      console.log('[DEBUG AUTH] Clearing watchdog timer.');
-      clearTimeout(timeoutId);
       console.log('[DEBUG AUTH] Setting isLoggingIn to false inside catch block');
       setIsLoggingIn(false);
       
@@ -168,8 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Login error:', error);
       }
     } finally {
-      console.log('[DEBUG AUTH] login() finally block entered. clearing timeout (just in case) and isLoggingIn = false (just in case).');
-      clearTimeout(timeoutId);
+      console.log('[DEBUG AUTH] login() finally block entered.');
     }
   };
 

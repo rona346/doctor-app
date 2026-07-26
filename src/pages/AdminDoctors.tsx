@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Stethoscope, Plus, Search, MoreVertical, X, Loader2, CheckCircle, Trash2, Edit2 } from 'lucide-react';
 import { collection, query, where, getDocs, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -12,6 +12,9 @@ export default function AdminDoctors() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingDoctor, setEditingDoctor] = useState<UserType | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Form state
   const [newDoc, setNewDoc] = useState({
@@ -23,15 +26,57 @@ export default function AdminDoctors() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const specializations = [
+    'General Physician',
+    'Cardiology',
+    'Neurology',
+    'Dermatology',
+    'Orthopedics',
+    'Pediatrics',
+    'Gynecology',
+    'ENT',
+    'Ophthalmology',
+    'Psychiatry',
+    'Dentistry',
+    'Urology',
+    'Pulmonology',
+    'Gastroenterology',
+    'Endocrinology'
+  ];
+
+  const filteredSpecializations = specializations.filter(spec => 
+    spec.toLowerCase().includes(newDoc.specialization.toLowerCase())
+  );
+
   useEffect(() => {
     fetchDoctors();
   }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setEditingDoctor(null);
+    setNewDoc({ email: '', displayName: '', specialization: '', experience: '' });
+    setShowDropdown(false);
+  };
 
   const fetchDoctors = async () => {
     try {
       const q = query(collection(db, 'users'), where('role', '==', 'doctor'));
       const snapshot = await getDocs(q);
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      console.log('[TRACE] [AdminDoctors.tsx:fetchDoctors] Fetched doctor documents from Firestore:', docs.map(d => ({ uid: d.uid, displayName: d.displayName, experience: d.experience })));
       setDoctors(docs);
       setLoading(false);
     } catch (error) {
@@ -43,28 +88,51 @@ export default function AdminDoctors() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const doctorData: Partial<UserType> = {
-        uid: `doc_${Date.now()}`,
-        email: newDoc.email,
-        displayName: newDoc.displayName,
-        role: 'doctor',
-        specialization: newDoc.specialization,
-        experience: Number(newDoc.experience),
-        isActive: true,
-        photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(newDoc.displayName)}&background=random`,
-        createdAt: new Date().toISOString(),
-      };
+      const expValue = Number(newDoc.experience);
+      console.log('[TRACE] [AdminDoctors.tsx:handleAddDoctor] Submitting experience value. Input string:', newDoc.experience, 'Converted number:', expValue, 'Is editing:', !!editingDoctor);
+      if (editingDoctor) {
+        await updateDoc(doc(db, 'users', editingDoctor.uid), {
+          email: newDoc.email,
+          displayName: newDoc.displayName,
+          specialization: newDoc.specialization,
+          experience: expValue,
+        });
+        setSuccess(true);
+        setTimeout(() => {
+          setShowAddModal(false);
+          setSuccess(false);
+          setEditingDoctor(null);
+          setNewDoc({ email: '', displayName: '', specialization: '', experience: '' });
+          fetchDoctors();
+        }, 2000);
+      } else {
+        const doctorData: Partial<UserType> = {
+          uid: `doc_${Date.now()}`,
+          email: newDoc.email,
+          displayName: newDoc.displayName,
+          role: 'doctor',
+          specialization: newDoc.specialization,
+          experience: expValue,
+          isActive: true,
+          photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(newDoc.displayName)}&background=random`,
+          createdAt: new Date().toISOString(),
+        };
 
-      await setDoc(doc(db, 'users', doctorData.uid!), doctorData);
-      setSuccess(true);
-      setTimeout(() => {
-        setShowAddModal(false);
-        setSuccess(false);
-        setNewDoc({ email: '', displayName: '', specialization: '', experience: '' });
-        fetchDoctors();
-      }, 2000);
+        await setDoc(doc(db, 'users', doctorData.uid!), doctorData);
+        setSuccess(true);
+        setTimeout(() => {
+          setShowAddModal(false);
+          setSuccess(false);
+          setNewDoc({ email: '', displayName: '', specialization: '', experience: '' });
+          fetchDoctors();
+        }, 2000);
+      }
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'users');
+      handleFirestoreError(
+        error, 
+        editingDoctor ? OperationType.UPDATE : OperationType.CREATE, 
+        editingDoctor ? `users/${editingDoctor.uid}` : 'users'
+      );
     }
     setSubmitting(false);
   };
@@ -176,7 +244,20 @@ export default function AdminDoctors() {
                     </td>
                     <td className="py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 text-stone-400 hover:text-stone-900 transition-colors">
+                        <button 
+                          onClick={() => {
+                            setEditingDoctor(doc);
+                            setNewDoc({
+                              email: doc.email,
+                              displayName: doc.displayName,
+                              specialization: doc.specialization || '',
+                              experience: String(doc.experience || ''),
+                            });
+                            setShowAddModal(true);
+                          }}
+                          className="p-2 text-stone-400 hover:text-stone-900 transition-colors"
+                          title="Edit Doctor"
+                        >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button 
@@ -203,7 +284,7 @@ export default function AdminDoctors() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowAddModal(false)}
+              onClick={handleCloseModal}
               className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
             />
             <motion.div 
@@ -213,7 +294,7 @@ export default function AdminDoctors() {
               className="relative w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl"
             >
               <button 
-                onClick={() => setShowAddModal(false)}
+                onClick={handleCloseModal}
                 className="absolute top-6 right-6 text-stone-400 hover:text-stone-900 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -224,13 +305,21 @@ export default function AdminDoctors() {
                   <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-serif text-stone-900">Doctor Added Successfully</h3>
-                  <p className="text-stone-500 text-sm">The profile has been created and added to the system.</p>
+                  <h3 className="text-xl font-serif text-stone-900">
+                    {editingDoctor ? 'Profile Updated Successfully' : 'Doctor Added Successfully'}
+                  </h3>
+                  <p className="text-stone-500 text-sm">
+                    {editingDoctor ? 'The profile has been updated in the system.' : 'The profile has been created and added to the system.'}
+                  </p>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-2xl font-serif text-stone-900 mb-2">Add New Doctor</h2>
-                  <p className="text-stone-500 text-sm mb-8">Create a new professional profile for the system.</p>
+                  <h2 className="text-2xl font-serif text-stone-900 mb-2">
+                    {editingDoctor ? 'Edit Doctor Profile' : 'Add New Doctor'}
+                  </h2>
+                  <p className="text-stone-500 text-sm mb-8">
+                    {editingDoctor ? 'Update professional profile information.' : 'Create a new professional profile for the system.'}
+                  </p>
 
                   <form onSubmit={handleAddDoctor} className="space-y-6">
                     <div>
@@ -256,16 +345,44 @@ export default function AdminDoctors() {
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
+                      <div className="relative" ref={dropdownRef}>
                         <label className="block text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-2">Specialization</label>
                         <input 
                           required
                           type="text" 
                           value={newDoc.specialization}
-                          onChange={e => setNewDoc({...newDoc, specialization: e.target.value})}
+                          onFocus={() => setShowDropdown(true)}
+                          onChange={e => {
+                            setNewDoc({...newDoc, specialization: e.target.value});
+                            setShowDropdown(true);
+                          }}
                           className="w-full p-4 bg-stone-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-stone-200 outline-none"
-                          placeholder="Cardiology"
+                          placeholder="Search or select..."
                         />
+                        {showDropdown && (
+                          <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-stone-200 rounded-xl shadow-lg z-[110] divide-y divide-stone-50">
+                            {filteredSpecializations.length === 0 ? (
+                              <div className="p-3 text-xs text-stone-400 text-center">No matching specialization</div>
+                            ) : (
+                              filteredSpecializations.map((spec) => (
+                                <button
+                                  key={spec}
+                                  type="button"
+                                  onClick={() => {
+                                    setNewDoc({ ...newDoc, specialization: spec });
+                                    setShowDropdown(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left p-3 text-sm transition-colors hover:bg-stone-50",
+                                    newDoc.specialization === spec ? "bg-stone-100 font-medium text-stone-900" : "text-stone-600"
+                                  )}
+                                >
+                                  {spec}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-[10px] uppercase tracking-widest text-stone-400 font-bold mb-2">Experience (Yrs)</label>
@@ -283,7 +400,7 @@ export default function AdminDoctors() {
                       disabled={submitting}
                       className="w-full py-4 bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition-colors font-bold text-sm flex items-center justify-center gap-2"
                     >
-                      {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Profile'}
+                      {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : (editingDoctor ? 'Save Profile' : 'Create Profile')}
                     </button>
                   </form>
                 </>

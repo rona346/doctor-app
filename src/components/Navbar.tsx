@@ -8,9 +8,17 @@ export default function Navbar() {
   const { user, login, logout } = useAuth();
   const navigate = useNavigate();
 
+  const getLogoDestination = () => {
+    if (!user) return '/';
+    if (user.role === 'admin') return '/admin/dashboard';
+    if (user.role === 'doctor') return '/doctor/dashboard';
+    if (user.role === 'patient') return '/patient/dashboard';
+    return '/';
+  };
+
   return (
     <nav className="h-20 border-b border-stone-100 bg-white/80 backdrop-blur-md sticky top-0 z-50 px-8 flex items-center justify-between">
-      <Link to="/" className="flex items-center gap-3">
+      <Link to={getLogoDestination()} className="flex items-center gap-3">
         <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center text-white">
           <span className="text-xl font-serif">S</span>
         </div>
