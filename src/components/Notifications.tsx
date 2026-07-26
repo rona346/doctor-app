@@ -27,6 +27,7 @@ export default function Notifications() {
 
   useEffect(() => {
     if (!user) return;
+    console.log("Logged in User UID:", user.uid);
 
     const q = query(
       collection(db, 'notifications'),
@@ -35,7 +36,7 @@ export default function Notifications() {
       limit(20)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) =>{
       const msgs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()

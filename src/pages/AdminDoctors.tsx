@@ -89,6 +89,11 @@ export default function AdminDoctors() {
     setSubmitting(true);
     try {
       const expValue = Number(newDoc.experience);
+      if (expValue < 0) {
+        alert("Experience cannot be negative.");
+        setSubmitting(false);
+        return;
+      }
       console.log('[TRACE] [AdminDoctors.tsx:handleAddDoctor] Submitting experience value. Input string:', newDoc.experience, 'Converted number:', expValue, 'Is editing:', !!editingDoctor);
       if (editingDoctor) {
         await updateDoc(doc(db, 'users', editingDoctor.uid), {
@@ -251,7 +256,7 @@ export default function AdminDoctors() {
                               email: doc.email,
                               displayName: doc.displayName,
                               specialization: doc.specialization || '',
-                              experience: String(doc.experience || ''),
+                              experience: doc.experience?.toString() ?? '',
                             });
                             setShowAddModal(true);
                           }}
@@ -389,6 +394,8 @@ export default function AdminDoctors() {
                         <input 
                           required
                           type="number" 
+                          min={0}
+                          step={1}
                           value={newDoc.experience}
                           onChange={e => setNewDoc({...newDoc, experience: e.target.value})}
                           className="w-full p-4 bg-stone-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-stone-200 outline-none"

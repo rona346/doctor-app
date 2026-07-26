@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, Clock, User, ArrowRight, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { collection, query, where, getDocs, updateDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
@@ -26,16 +26,35 @@ export default function DoctorAppointments() {
       const snapshot = await getDocs(q);
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setAppointments(docs);
+      setLoading(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'appointments');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: string, patientId: string) => {
     try {
       await updateDoc(doc(db, 'appointments', id), { status });
+      if (status === "confirmed") {
+        await addDoc(collection(db, "notifications"), {
+        userId: patientId,
+        title: "Appointment Confirmed",
+        message: `Your appointment with ${user?.displayName} has been confirmed.`,
+        type: "appointment",
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+    }
+      else if (status === "cancelled"){
+        await addDoc(collection(db, "notifications"), {
+          userId: patientId,
+          title: "Appointment Cancelled",
+          message: `Your appointment with ${user?.displayName} has been cancelled.`,
+          type: "appointment",
+          read: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
       fetchAppointments();
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `appointments/${id}`);
@@ -81,7 +100,7 @@ export default function DoctorAppointments() {
                         <div className="w-10 h-10 bg-stone-100 rounded-full flex items-center justify-center text-stone-400">
                           <User className="w-5 h-5" />
                         </div>
-                        <span className="font-medium text-stone-900">{app.patientId}</span>
+                        <span className="font-medium text-stone-900">{app.patientName || app.patientId}</span>
                       </div>
                     </td>
                     <td className="py-4">
@@ -111,7 +130,7 @@ export default function DoctorAppointments() {
                       <div className="flex items-center justify-end gap-2">
                         {app.status === 'pending' && (
                           <button 
-                            onClick={() => updateStatus(app.id, 'confirmed')}
+                            onClick={() => updateStatus(app.id, 'confirmed', app.patientId)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                           >
                             <CheckCircle className="w-4 h-4" />
@@ -119,7 +138,7 @@ export default function DoctorAppointments() {
                         )}
                         {app.status !== 'cancelled' && app.status !== 'completed' && (
                           <button 
-                            onClick={() => updateStatus(app.id, 'cancelled')}
+                            onClick={() => updateStatus(app.id, 'cancelled', app.patientId)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           >
                             <XCircle className="w-4 h-4" />

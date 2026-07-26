@@ -22,6 +22,7 @@ export default function AppointmentBooking() {
       const q = query(collection(db, 'users'), where('role', '==', 'doctor'));
       const querySnapshot = await getDocs(q);
       const docs = querySnapshot.docs.map(doc => doc.data() as UserType);
+      console.log("Doctors:", docs);
       setDoctors(docs);
     };
     fetchDoctors();
@@ -33,19 +34,44 @@ export default function AppointmentBooking() {
     try {
       await addDoc(collection(db, 'appointments'), {
         patientId: user.uid,
+        patientName: user.displayName,
+
         doctorId: selectedDoctor.uid,
+        doctorName: selectedDoctor.displayName,
+        
         date,
         timeSlot,
         symptoms,
         status: 'pending',
         createdAt: new Date().toISOString(),
       });
+
+      await addDoc(collection(db, 'notifications'), {
+        userId: selectedDoctor.uid,
+        title: 'New Appointment Request',
+        message: `You have a new appointment request from ${user.displayName}.`,
+        type: 'appointment',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      await addDoc(collection(db, 'notifications'),{
+        userId: user.uid,
+        title: 'Appointment Request Sent',
+        message: `Your appointment request has been sent to ${selectedDoctor.displayName}.`,
+        type: 'appointment',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
+
       setSuccess(true);
+
     } catch (error) {
       console.error('Booking error:', error);
     }
+
     setLoading(false);
-  };
+      };
 
   if (success) {
     return (
