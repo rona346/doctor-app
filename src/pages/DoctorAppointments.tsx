@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, Clock, User, ArrowRight, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { collection, query, where, getDocs, updateDoc, doc, orderBy, addDoc } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
 import { cn } from '../lib/utils';
+import { getDoctorAppointments, updateAppointmentStatus } from "../services/appointmentService";
 
 export default function DoctorAppointments() {
   const { user } = useAuth();
@@ -18,14 +17,8 @@ export default function DoctorAppointments() {
 
   const fetchAppointments = async () => {
     try {
-      const q = query(
-        collection(db, 'appointments'), 
-        where('doctorId', '==', user?.uid),
-        orderBy('date', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setAppointments(docs);
+      const appointments = await getDoctorAppointments(user!.uid);
+      setAppointments(appointments);
       setLoading(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'appointments');
@@ -34,27 +27,7 @@ export default function DoctorAppointments() {
 
   const updateStatus = async (id: string, status: string, patientId: string) => {
     try {
-      await updateDoc(doc(db, 'appointments', id), { status });
-      if (status === "confirmed") {
-        await addDoc(collection(db, "notifications"), {
-        userId: patientId,
-        title: "Appointment Confirmed",
-        message: `Your appointment with ${user?.displayName} has been confirmed.`,
-        type: "appointment",
-        read: false,
-        createdAt: new Date().toISOString(),
-      });
-    }
-      else if (status === "cancelled"){
-        await addDoc(collection(db, "notifications"), {
-          userId: patientId,
-          title: "Appointment Cancelled",
-          message: `Your appointment with ${user?.displayName} has been cancelled.`,
-          type: "appointment",
-          read: false,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await updateAppointmentStatus(id, status, patientId, user?.displayName ?? 'Doctor');
       fetchAppointments();
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `appointments/${id}`);
