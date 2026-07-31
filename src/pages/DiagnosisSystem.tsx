@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { motion } from 'motion/react';
 import { BrainCircuit, Stethoscope, AlertCircle, ArrowRight, Loader2, ClipboardList, Send } from 'lucide-react';
-import { getDiagnosisSuggestions } from '../services/gemini';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
 
@@ -15,9 +14,18 @@ export default function DiagnosisSystem() {
   const handleAnalyze = async () => {
     if (!symptoms.trim()) return;
     setLoading(true);
-    const result = await getDiagnosisSuggestions(symptoms);
-    setSuggestions(result || "No suggestions found.");
-    setLoading(false);
+    const response = await fetch("/api/diagnosis", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ symptoms }),
+    });
+
+    const data = await response.json();
+
+    setSuggestions(data.result || "No suggestions found.");
+        setLoading(false);
   };
 
   return (

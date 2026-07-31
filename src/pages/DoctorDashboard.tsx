@@ -2,16 +2,17 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { motion } from 'motion/react';
 import { Calendar, Users, Activity, Clock, User, ArrowRight, CheckCircle, AlertCircle, XCircle} from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getDashboardStats } from "../services/doctorDashboardService";
+import { getDashboardStats, getRecentActivities } from "../services/doctorDashboardService";
 import { getDoctorAppointments } from "../services/appointmentService";
 // import { get } from 'http';
 
 export default function DoctorDashboard() {
   
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
 
 
@@ -22,6 +23,8 @@ export default function DoctorDashboard() {
     confirmed: 0,
     cancelled: 0
   });
+
+  const [activities, setActivities] = useState<any[]>([]);
 
   const [appointments, setAppointments] = useState<any[]>([]);
 
@@ -43,9 +46,6 @@ export default function DoctorDashboard() {
       });
   });
 
-
-
-
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -62,6 +62,9 @@ async function fetchDashboardStats() {
   try {
     const data = await getDashboardStats(user.uid);
     setStats(data);
+    const recentActivities = await getRecentActivities(user.uid);
+    setActivities(recentActivities);
+
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
   }
@@ -127,10 +130,10 @@ const dashboardCards = [
           <p className="text-stone-500 font-sans">You have {stats.today} appointment{stats.today !== 1 ? "s" : ""} scheduled for today.</p>
         </div>
         <div className="flex gap-4">
-          <button className="px-6 py-3 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 transition-colors text-sm font-sans">
-            View Schedule
+          <button className="px-6 py-3 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 transition-colors text-sm font-sans" onClick={() => navigate("/doctor/appointments")}>
+            View Schedule 
           </button>
-          <button className="px-6 py-3 bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition-colors flex items-center gap-2 text-sm font-sans">
+          <button className="px-6 py-3 bg-stone-900 text-white rounded-xl hover:bg-stone-800 transition-colors flex items-center gap-2 text-sm font-sans" onClick={() => navigate("/doctor/diagnoses")}>
             <Activity className="w-4 h-4" />
             Start Consultation
           </button>
@@ -205,30 +208,23 @@ const dashboardCards = [
           <section className="bg-stone-900 text-white rounded-3xl p-8">
             <h2 className="text-xl font-serif mb-6">Quick Actions</h2>
             <div className="space-y-4">
-              <QuickAction icon={Activity} label="AI Diagnosis Tool" dark />
-              <QuickAction icon={Users} label="Manage Patients" dark />
-              <QuickAction icon={Clock} label="Update Availability" dark />
+              <QuickAction icon={Activity} label="AI Diagnosis Tool" light onClick={() => navigate("/doctor/diagnoses")}/>
+              <QuickAction icon={Users} label="Manage Patients" dark onClick={() => navigate("/doctor/patients")}/>
+              <QuickAction icon={Clock} label="Update Availability" dark onClick={() => navigate("/doctor/profile")}/>
             </div>
           </section>
 
           <section className="bg-white border border-stone-100 rounded-3xl p-8">
             <h2 className="text-xl font-serif text-stone-900 mb-6">Recent Activity</h2>
             <div className="space-y-6">
-              <ActivityItem
-                title="Prescription Sent"
-                desc="To Michael Chen for Hypertension"
-                time="2h ago"
-              />
-              <ActivityItem
-                title="Lab Result Reviewed"
-                desc="Sarah Miller's Blood Test"
-                time="4h ago"
-              />
-              <ActivityItem
-                title="New Patient Assigned"
-                desc="Emily Watson (Cardiology)"
-                time="5h ago"
-              />
+              {activities.map((activity) => (
+                <ActivityItem
+                  key={activity.id}
+                  title={activity.title}
+                  desc={activity.desc}
+                  time={activity.time}
+                />
+              ))}
             </div>
           </section>
         </div>
@@ -279,9 +275,9 @@ function PatientAppointmentCard({ patient, age, time, symptoms, status }: any) {
 }
 
 
-function QuickAction({ icon: Icon, label, dark }: any) {
+function QuickAction({ icon: Icon, label, dark, onClick}: any) {
   return (
-    <button className={cn(
+    <button onClick={onClick} className={cn(
       "flex items-center gap-3 p-4 rounded-2xl transition-all text-left w-full group",
       dark 
         ? "bg-white/5 hover:bg-white/10 text-white" 
