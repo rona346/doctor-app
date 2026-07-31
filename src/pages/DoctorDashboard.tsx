@@ -1,42 +1,130 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { motion } from 'motion/react';
-import { Calendar, Users, Activity, Clock, User, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Users, Activity, Clock, User, ArrowRight, CheckCircle, AlertCircle, XCircle} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-const data = [
-  { name: 'Mon', patients: 12 },
-  { name: 'Tue', patients: 19 },
-  { name: 'Wed', patients: 15 },
-  { name: 'Thu', patients: 22 },
-  { name: 'Fri', patients: 18 },
-  { name: 'Sat', patients: 8 },
-  { name: 'Sun', patients: 5 },
-];
+import { getDashboardStats } from "../services/doctorDashboardService";
+import { getDoctorAppointments } from "../services/appointmentService";
+// import { get } from 'http';
 
 export default function DoctorDashboard() {
+  
   const { user } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
+
+
+  const [stats, setStats] = useState({
+    today: 0,
+    totalPatients: 0,
+    pending: 0,
+    confirmed: 0,
+    cancelled: 0
+  });
+
+  const [appointments, setAppointments] = useState<any[]>([]);
+
+  const chartData: { name: string; patients: number }[] = [];
+
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const patientCount: { [key: string]: number } = {};
+
+  appointments.forEach((appointment) => {
+    const day = days[new Date(appointment.date).getDay()];
+    patientCount[day] = (patientCount[day] || 0) + 1;
+
+  });
+    days.forEach((day) => {
+      chartData.push({
+          name: day,
+          patients: patientCount[day] || 0,
+      });
+  });
+
+
+
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+  useEffect(() => {
+  if (user) {
+    fetchDashboardStats();
+    fetchAppointments();
+  }
+  }, [user]);
 
-  const stats = [
-    { label: 'Today', value: '8', icon: Calendar, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Total Patients', value: '1,240', icon: Users, color: 'bg-green-50 text-green-600' },
-    { label: 'Pending', value: '3', icon: AlertCircle, color: 'bg-orange-50 text-orange-600' },
-    { label: 'Completed', value: '1,120', icon: CheckCircle, color: 'bg-purple-50 text-purple-600' },
-  ];
+async function fetchDashboardStats() {
+
+  if (!user) return;
+  try {
+    const data = await getDashboardStats(user.uid);
+    setStats(data);
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+  }
+}
+async function fetchAppointments(){
+
+  if(!user) return;
+  try{
+    const data = await getDoctorAppointments(user.uid);
+    console.log(data);
+    setAppointments(data);
+  }catch(error){
+    console.error("Error fetching appointments:", error);
+  }
+}
+
+const today = new Date().toISOString().split("T")[0];
+
+const todayAppointments = appointments.filter(
+    (appointment) => appointment.date === today
+  );
+const dashboardCards = [
+  {
+    label: "Today",
+    value: stats.today,
+    icon: Calendar,
+    color: "bg-blue-50 text-blue-600",
+  },
+  {
+    label: "Total Patients",
+    value: stats.totalPatients,
+    icon: Users,
+    color: "bg-green-50 text-green-600",
+  },
+  {
+    label: "Pending",
+    value: stats.pending,
+    icon: AlertCircle,
+    color: "bg-orange-50 text-orange-600",
+  },
+  {
+    label: "Confirmed",
+    value: stats.confirmed,
+    icon: CheckCircle,
+    color: "bg-purple-50 text-purple-600",
+  },
+    {
+    label: "Cancelled",
+    value: stats.cancelled,
+    icon: XCircle,
+    color: "bg-purple-50 text-purple-600",
+  },
+
+  
+
+];
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif text-stone-900">Welcome, {user?.displayName}</h1>
-          <p className="text-stone-500 font-sans">You have 8 appointments scheduled for today.</p>
+          <h1 className="text-3xl font-serif text-stone-900">Welcome back, {user?.displayName}</h1>
+          <p className="text-stone-500 font-sans">You have {stats.today} appointment{stats.today !== 1 ? "s" : ""} scheduled for today.</p>
         </div>
         <div className="flex gap-4">
           <button className="px-6 py-3 border border-stone-200 text-stone-600 rounded-xl hover:bg-stone-50 transition-colors text-sm font-sans">
@@ -50,7 +138,7 @@ export default function DoctorDashboard() {
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {stats.map((stat) => (
+        {dashboardCards.map((stat) => (
           <motion.div
             key={stat.label}
             whileHover={{ y: -4 }}
@@ -72,22 +160,24 @@ export default function DoctorDashboard() {
               <h2 className="text-xl font-serif text-stone-900">Today's Appointments</h2>
               <Link to="/doctor/appointments" className="text-sm text-stone-400 hover:text-stone-900 transition-colors">View Full List</Link>
             </div>
-            <div className="space-y-4">
-              <PatientAppointmentCard
-                patient="John Doe"
-                age="42"
-                time="10:30 AM"
-                symptoms="Chest pain, Shortness of breath"
-                status="waiting"
-              />
-              <PatientAppointmentCard
-                patient="Sarah Miller"
-                age="28"
-                time="11:15 AM"
-                symptoms="Fever, Persistent cough"
-                status="waiting"
-              />
-            </div>
+             <div className="space-y-4">
+                {todayAppointments.length === 0 ? (
+                  <p className="text-center text-stone-400">
+                    No appointments for today.
+                  </p>
+                ) : (
+                  todayAppointments.map((app) => (
+                    <PatientAppointmentCard
+                      key={app.id}
+                      patient={app.patientName}
+                      age="-"
+                      time={app.timeSlot}
+                      symptoms={app.symptoms || "No symptoms"}
+                      status={app.status}
+                    />
+                  ))
+                )}
+             </div>
           </section>
 
           <section className="bg-white border border-stone-100 rounded-3xl p-8">
@@ -95,10 +185,10 @@ export default function DoctorDashboard() {
             <div className="h-64 w-full min-w-0">
               {isMounted && (
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={100}>
-                  <BarChart data={data}>
+                  <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f5f5f5" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a8a29e' }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a8a29e' }} />
+                    <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 12, fill: '#a8a29e' }} />
                     <Tooltip 
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       cursor={{ fill: '#f5f2ed' }}
@@ -166,10 +256,18 @@ function PatientAppointmentCard({ patient, age, time, symptoms, status }: any) {
             {time}
           </div>
         </div>
-        <span className={cn(
-          "px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold",
-          status === 'waiting' ? "bg-orange-50 text-orange-600" : "bg-green-50 text-green-600"
-        )}>
+        <span
+            className={cn(
+              "px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold",
+              status === "pending"
+                ? "bg-orange-50 text-orange-600"
+                : status === "confirmed"
+                ? "bg-green-50 text-green-600"
+                : status === "cancelled"
+                ? "bg-red-50 text-red-600"
+                : "bg-blue-50 text-blue-600"
+            )}
+          >
           {status}
         </span>
         <button className="p-2 bg-stone-900 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all">
@@ -179,6 +277,7 @@ function PatientAppointmentCard({ patient, age, time, symptoms, status }: any) {
     </div>
   );
 }
+
 
 function QuickAction({ icon: Icon, label, dark }: any) {
   return (

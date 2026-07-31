@@ -26,9 +26,13 @@ export default function DoctorAppointments() {
   };
 
   const updateStatus = async (id: string, status: string, patientId: string) => {
+    console.log("Updating:", id, status);
     try {
       await updateAppointmentStatus(id, status, patientId, user?.displayName ?? 'Doctor');
       fetchAppointments();
+      const appointments = await getDoctorAppointments(user!.uid);
+      console.log(appointments);
+      setAppointments(appointments);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `appointments/${id}`);
     }
