@@ -38,8 +38,8 @@ export default function AdminAppointments() {
   };
 
   const filteredAppointments = appointments.filter(app => 
-    app.patientId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    app.doctorId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    app.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    app.doctorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     app.status?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -56,7 +56,7 @@ export default function AdminAppointments() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
             <input 
               type="text" 
-              placeholder="Search by ID or status..." 
+              placeholder="Search by patient or doctor name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 bg-stone-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-stone-200 outline-none w-full"
@@ -94,11 +94,11 @@ export default function AdminAppointments() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <UserRound className="w-4 h-4 text-stone-400" />
-                          <span className="text-sm font-medium text-stone-900">Patient: {app.patientId}</span>
+                          <span className="text-sm font-medium text-stone-900">Patient: {app.patientName}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4 text-stone-400" />
-                          <span className="text-sm text-stone-600">Doctor: {app.doctorId}</span>
+                          <span className="text-sm text-stone-600">Doctor: {app.doctorName}</span>
                         </div>
                       </div>
                     </td>
