@@ -9,16 +9,8 @@ import { collection, query, where, getDocs, setDoc, doc } from 'firebase/firesto
 import { db } from '../firebase';
 import { User as UserType } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestore-errors';
+import { getAdminDashboardStats, getPatientGrowth  } from "../services/adminDashboardService";
 
-const data = [
-  { name: 'Jan', patients: 400, revenue: 2400 },
-  { name: 'Feb', patients: 300, revenue: 1398 },
-  { name: 'Mar', patients: 200, revenue: 9800 },
-  { name: 'Apr', patients: 278, revenue: 3908 },
-  { name: 'May', patients: 189, revenue: 4800 },
-  { name: 'Jun', patients: 239, revenue: 3800 },
-  { name: 'Jul', patients: 349, revenue: 4300 },
-];
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -27,33 +19,33 @@ export default function AdminDashboard() {
   const [patientCount, setPatientCount] = useState(0);
   const [appointmentCount, setAppointmentCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<
+    { name: string; patients: number }[]
+  >([]);
   
   useEffect(() => {
     setIsMounted(true);
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const doctorsQuery = query(collection(db, 'users'), where('role', '==', 'doctor'));
-      const patientsQuery = query(collection(db, 'users'), where('role', '==', 'patient'));
-      const appointmentsQuery = query(collection(db, 'appointments'));
 
-      const [doctorsSnap, patientsSnap, appointmentsSnap] = await Promise.all([
-        getDocs(doctorsQuery),
-        getDocs(patientsQuery),
-        getDocs(appointmentsQuery)
-      ]);
+const fetchData = async () => {
+  try {
+    const data = await getAdminDashboardStats();
+    const growth = await getPatientGrowth();
+    console.log(data); 
 
-      setDoctors(doctorsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any)));
-      setPatientCount(patientsSnap.size);
-      setAppointmentCount(appointmentsSnap.size);
-      setLoading(false);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'data');
-    }
-  };
+    setDoctors(data.doctors);
+    setPatientCount(data.patientCount);
+    setAppointmentCount(data.appointmentCount);
 
+    setChartData(growth);
+
+    setLoading(false);
+  } catch (error) {
+    console.error(error);
+  }
+};
   const stats = [
     { label: 'Total Patients', value: patientCount.toLocaleString(), icon: Users, color: 'bg-blue-50 text-blue-600', trend: '+12%' },
     { label: 'Total Doctors', value: doctors.length.toString(), icon: Stethoscope, color: 'bg-green-50 text-green-600', trend: '+2' },
@@ -104,7 +96,7 @@ export default function AdminDashboard() {
             <div className="h-80 w-full min-w-0">
               {isMounted && (
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={100}>
-                  <AreaChart data={data}>
+                  <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorPatients" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#1c1917" stopOpacity={0.1}/>
@@ -113,7 +105,7 @@ export default function AdminDashboard() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f5f5f5" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a8a29e' }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a8a29e' }} />
+                    <YAxis axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 12, fill: '#a8a29e' }} />
                     <Tooltip 
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                     />
