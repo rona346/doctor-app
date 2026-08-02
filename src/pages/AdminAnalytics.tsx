@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Activity, TrendingUp, Users, Stethoscope, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getAnalyticsStats, getAnalyticsChartData, AnalyticsChartData, getDepartmentLoad,} from "../services/analyticsService";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { cn } from '../lib/utils';
 
@@ -26,6 +25,10 @@ export default function AdminAnalytics() {
     totalAppointments: 0,
     activeConsultations: 0,
   });
+  const [chartData, setChartData] = useState<AnalyticsChartData[]>([]);
+  const [departmentData, setDepartmentData] = useState<
+  { name: string; value: number }[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,31 +36,37 @@ export default function AdminAnalytics() {
     fetchStats();
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      const [patientsSnap, doctorsSnap, appointmentsSnap] = await Promise.all([
-        getDocs(query(collection(db, 'users'), where('role', '==', 'patient'))),
-        getDocs(query(collection(db, 'users'), where('role', '==', 'doctor'))),
-        getDocs(collection(db, 'appointments')),
-      ]);
+const fetchStats = async () => {
+  try {
+    const data = await getAnalyticsStats();
 
-      setStats({
-        totalPatients: patientsSnap.size,
-        totalDoctors: doctorsSnap.size,
-        totalAppointments: appointmentsSnap.size,
-        activeConsultations: appointmentsSnap.docs.filter(d => d.data().status === 'confirmed').length,
-      });
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
+    const growthData = await getAnalyticsChartData();
+
+    setChartData(growthData);
+
+    const departments = await getDepartmentLoad();
+
+    setDepartmentData(departments);
+
+    setStats({
+      totalPatients: data.patientCount,
+      totalDoctors: data.doctorCount,
+      totalAppointments: data.appointmentCount,
+      activeConsultations: data.doctorEfficiency,
+    });
+
+    setLoading(false);
+  } catch (error) {
+    console.error("Error fetching analytics:", error);
+    setLoading(false);
+  }
+};
 
   const metrics = [
     { label: 'Patient Growth', value: stats.totalPatients, trend: '+12.5%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Doctor Efficiency', value: '94%', trend: '+2.1%', icon: Stethoscope, color: 'text-green-600', bg: 'bg-green-50' },
     { label: 'Consultation Rate', value: stats.totalAppointments, trend: '+18.2%', icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'System Uptime', value: '99.9%', trend: 'Stable', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'System Uptime', value: `${stats.activeConsultations}%`, trend: 'Stable', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
   ];
 
   return (
@@ -98,7 +107,7 @@ export default function AdminAnalytics() {
           <div className="h-80 w-full min-w-0">
             {isMounted && (
               <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={100}>
-                <AreaChart data={data}>
+                <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorPatients" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#1c1917" stopOpacity={0.1}/>
@@ -123,7 +132,7 @@ export default function AdminAnalytics() {
           <div className="h-80 w-full min-w-0">
             {isMounted && (
               <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={100}>
-                <BarChart data={data}>
+                <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f5f5f5" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a8a29e' }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#a8a29e' }} />
@@ -166,12 +175,7 @@ export default function AdminAnalytics() {
               <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={100}>
                 <PieChart>
                   <Pie
-                    data={[
-                      { name: 'Cardiology', value: 400 },
-                      { name: 'Neurology', value: 300 },
-                      { name: 'Pediatrics', value: 300 },
-                      { name: 'General', value: 200 },
-                    ]}
+                    data={departmentData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -179,7 +183,7 @@ export default function AdminAnalytics() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {data.map((entry, index) => (
+                    {departmentData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -189,15 +193,24 @@ export default function AdminAnalytics() {
             )}
           </div>
           <div className="mt-4 space-y-2">
-            {['Cardiology', 'Neurology', 'Pediatrics', 'General'].map((dept, i) => (
-              <div key={dept} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i] }} />
-                  <span className="text-stone-600">{dept}</span>
+            {departmentData.map((dept, i) => (
+                <div
+                  key={dept.name}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                    />
+                    <span className="text-stone-600">{dept.name}</span>
+                  </div>
+
+                  <span className="font-medium text-stone-900">
+                    {dept.value}
+                  </span>
                 </div>
-                <span className="font-medium text-stone-900">{[400, 300, 300, 200][i]}</span>
-              </div>
-            ))}
+              ))}
           </div>
         </section>
       </div>
