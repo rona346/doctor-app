@@ -1,5 +1,13 @@
 import { useState, useEffect, createContext, useContext, useRef } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
+} from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase';
 import { User, UserRole } from '../types';
@@ -9,7 +17,28 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isLoggingIn: boolean;
+
+  // Google Login
   login: () => Promise<void>;
+
+  // Email/Password Login
+  loginWithEmail: (
+    email: string,
+    password: string
+  ) => Promise<void>;
+
+  // Signup
+  signupWithEmail: (
+    name: string,
+    email: string,
+    password: string,
+    role: UserRole
+  ) => Promise<void>;
+
+  // Forgot Password
+  resetPassword: (email: string) => Promise<void>;
+
+  // Logout
   logout: () => Promise<void>;
 }
 
@@ -207,6 +236,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+    const loginWithEmail = async (
+      email: string,
+      password: string
+    ) => {
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        console.error("Email Login Error:", error);
+        throw error;
+      }
+    };
+    const signupWithEmail = async (
+      name: string,
+      email: string,
+      password: string,
+      role: UserRole
+    ) => {
+      try {
+        const result = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+        await updateProfile(result.user, {
+          displayName: name,
+        });
+
+        await setDoc(doc(db, "users", result.user.uid), {
+          uid: result.user.uid,
+          displayName: name,
+          email,
+          role,
+          createdAt: new Date().toISOString(),
+        });
+
+      } catch (error) {
+        console.error("Signup Error:", error);
+        throw error;
+      }
+    };
+
+  const resetPassword = async (email: string) => {
+      try {
+        await sendPasswordResetEmail(auth, email);
+      } catch (error) {
+        console.error("Reset Password Error:", error);
+        throw error;
+      }
+    };
+
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -216,10 +297,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isLoggingIn, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  <AuthContext.Provider
+    value={{
+      user,
+      loading,
+      isLoggingIn,
+
+      // Google Login
+      login,
+
+      // Email Login
+      loginWithEmail,
+
+      // Signup
+      signupWithEmail,
+
+      // Forgot Password
+      resetPassword,
+
+      // Logout
+      logout,
+    }}
+  >
+    {children}
+  </AuthContext.Provider>
+);
 }
 
 export function useAuth() {

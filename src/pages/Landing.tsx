@@ -12,7 +12,7 @@ export default function Landing() {
     if (user) {
       navigate(`/${user.role}/dashboard`);
     } else {
-      login();
+       navigate("/login");
     }
   };
 

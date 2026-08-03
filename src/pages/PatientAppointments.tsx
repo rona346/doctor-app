@@ -81,7 +81,7 @@ export default function PatientAppointments() {
                         <div className="w-10 h-10 bg-stone-100 rounded-full flex items-center justify-center text-stone-400">
                           <User className="w-5 h-5" />
                         </div>
-                        <span className="font-medium text-stone-900">Dr. {app.doctorId}</span>
+                        <span className="font-medium text-stone-900">Dr. {app.doctorName || app.doctorId}</span>
                       </div>
                     </td>
                     <td className="py-4">

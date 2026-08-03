@@ -14,11 +14,12 @@ import PatientAppointments from './pages/PatientAppointments';
 import PatientPrescriptions from './pages/PatientPrescriptions';
 import AppointmentBooking from './pages/AppointmentBooking';
 import DiagnosisSystem from './pages/DiagnosisSystem';
+import Login from "./pages/Login";
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
-import FirestoreTest from './components/FirestoreTest';
+// import FirestoreTest from './components/FirestoreTest';
 
 function ProtectedRoute({ children, role }: { children: React.ReactNode; role?: string }) {
   const { user, loading } = useAuth();
@@ -37,14 +38,15 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#f5f2ed] text-stone-900 font-sans selection:bg-stone-900 selection:text-white">
-      <FirestoreTest />
+      {/* <FirestoreTest /> */}
       <Navbar />
       <div className="flex">
         {user && <Sidebar />}
         <main className={cn("flex-1 p-8 transition-all duration-500", !user && "p-0")}>
           <Routes>
             <Route path="/" element={<Landing />} />
-            
+            <Route path="/login" element={<Login />} />
+
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/doctors" element={<ProtectedRoute role="admin"><AdminDoctors /></ProtectedRoute>} />

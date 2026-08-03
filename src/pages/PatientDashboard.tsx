@@ -3,15 +3,68 @@ import { motion } from 'motion/react';
 import { Calendar, ClipboardList, FileText, MessageSquare, ArrowRight, Activity, Clock, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { getPatientDashboardStats , getUpcomingAppointments } from "../services/patientDashboardService";
+import { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 
 export default function PatientDashboard() {
   const { user } = useAuth();
+  const [stats, setStats] = useState({
+  upcoming: 0,
+  diagnoses: 0,
+  prescriptions: 0,
+  messages: 0,
+});
 
-  const stats = [
-    { label: 'Upcoming', value: '1', icon: Calendar, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Diagnoses', value: '4', icon: ClipboardList, color: 'bg-green-50 text-green-600' },
-    { label: 'Prescriptions', value: '3', icon: FileText, color: 'bg-purple-50 text-purple-600' },
-    { label: 'Messages', value: '12', icon: MessageSquare, color: 'bg-orange-50 text-orange-600' },
+const quickActions = [
+  {
+    icon: MessageSquare,
+    label: "Chat with Doctor",
+    path: "/patient/chat",
+  },
+  {
+    icon: FileText,
+    label: "Download Prescriptions",
+    path: "/patient/prescriptions",
+  },
+  {
+    icon: Activity,
+    label: "Symptom Checker",
+    path: "/patient/diagnosis",
+  },
+];
+  // const [appointments, setAppointments] = useState<any[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<any[]>([]);
+const loadDashboardStats = async () => {
+  if (!user) return;
+
+  const dashboardStats = await getPatientDashboardStats(user.uid);
+
+  setStats(dashboardStats);
+};
+
+const loadUpcomingAppointments = async () => {
+  if (!user) return;
+
+  const data = await getUpcomingAppointments(user.uid);
+
+  setUpcomingAppointments(data);
+
+  console.log(data);
+};
+
+useEffect(() => {
+  if (user) {
+    loadDashboardStats();
+    loadUpcomingAppointments();
+  }
+}, [user]);
+
+  const statcards = [
+    { label: 'Upcoming', value: stats.upcoming, icon: Calendar, color: 'bg-blue-50 text-blue-600' },
+    { label: 'Diagnoses', value: stats.diagnoses, icon: ClipboardList, color: 'bg-green-50 text-green-600' },
+    { label: 'Prescriptions', value: stats.prescriptions, icon: FileText, color: 'bg-purple-50 text-purple-600' },
+    { label: 'Messages', value: stats.messages, icon: MessageSquare, color: 'bg-orange-50 text-orange-600' },
   ];
 
   return (
@@ -31,7 +84,7 @@ export default function PatientDashboard() {
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        {stats.map((stat) => (
+        {statcards.map((stat) => (
           <motion.div
             key={stat.label}
             whileHover={{ y: -4 }}
@@ -54,13 +107,22 @@ export default function PatientDashboard() {
               <Link to="/patient/appointments" className="text-sm text-stone-400 hover:text-stone-900 transition-colors">View All</Link>
             </div>
             <div className="space-y-4">
-              <AppointmentCard
-                doctor="Dr. Devendra Sareen"
-                specialization="Cardiology"
-                date="Oct 24, 2024"
-                time="10:30 AM"
-                status="confirmed"
-              />
+              {upcomingAppointments.length === 0 ? (
+                <p className="text-stone-400 text-center py-8">
+                  No upcoming appointments
+                </p>
+              ) : (
+                upcomingAppointments.map((appointment) => (
+                  <AppointmentCard
+                    key={appointment.id}
+                    doctor={appointment.doctorName}
+                    specialization="General Physician"
+                    date={appointment.date}
+                    time={appointment.timeSlot}
+                    status={appointment.status}
+                  />
+                ))
+              )}
             </div>
           </section>
 
@@ -98,9 +160,14 @@ export default function PatientDashboard() {
           <section className="bg-white border border-stone-100 rounded-3xl p-8">
             <h2 className="text-xl font-serif text-stone-900 mb-6">Quick Actions</h2>
             <div className="grid grid-cols-1 gap-4">
-              <QuickAction icon={MessageSquare} label="Chat with Doctor" />
-              <QuickAction icon={FileText} label="Download Prescriptions" />
-              <QuickAction icon={Activity} label="Symptom Checker" />
+              {quickActions.map((action) => (
+                <QuickAction
+                  key={action.label}
+                  icon={action.icon}
+                  label={action.label}
+                  path={action.path}
+                />
+              ))}
             </div>
           </section>
         </div>
@@ -159,9 +226,10 @@ function DiagnosisCard({ condition, doctor, date }: any) {
   );
 }
 
-function QuickAction({ icon: Icon, label }: any) {
+function QuickAction({ icon: Icon, label,path }: any) {
+  const navigate = useNavigate()
   return (
-    <button className="flex items-center gap-3 p-4 border border-stone-50 rounded-2xl hover:bg-stone-50 transition-colors text-left group">
+    <button   onClick={() => navigate(path)} className="flex items-center gap-3 p-4 border border-stone-50 rounded-2xl hover:bg-stone-50 transition-colors text-left group">
       <div className="w-10 h-10 bg-stone-50 rounded-xl flex items-center justify-center text-stone-400 group-hover:text-stone-900 transition-colors">
         <Icon className="w-5 h-5" />
       </div>
